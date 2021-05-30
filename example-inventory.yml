@@ -1,0 +1,16 @@
+---
+all:
+  vars:
+    production: no
+    letsencrypt_account_key_src: /opt/letsencrypt/account.key
+    letsencrypt_account_email: admin@nakatomi.corp
+    letsencrypt_cert_path: /opt/letsencrypt/certs/
+    letsencrypt_csr_path: /opt/letsencrypt/csr/
+    domain: nakatomi.corp
+    dns_key_name: nsupdate
+    dns_key_secret: '+bFQtBCta7j2vWkjPkAFtgA=='
+    dns_server: 10.42.42.53
+  hosts:
+    example-firewall-01:
+    example-firewall-02:
+    example-firewall-03:
