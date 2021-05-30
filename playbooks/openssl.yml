@@ -1,19 +1,28 @@
 ---
-- name: Check if ACME private key file exists
+- name: Check if ACME account key file exists
   ansible.builtin.stat:
     path: '{{ letsencrypt_account_key_src }}'
-  register: stat_result
+  register: stat_acme_account_key_result
     
-- name: Create ACME private key
+- name: Create ACME account key
   community.crypto.openssl_privatekey:
     path: '{{ letsencrypt_account_key_src }}'
     size: 2048
-  when: not stat_result.stat.exists
+  when: not stat_acme_account_key_result.stat.exists
 
 - name: Set secure permissions on account key file
   ansible.builtin.file:
     path: '{{ letsencrypt_account_key_src }}'
     mode: '0600'
+
+- name: Check if ACME account key file exists
+  ansible.builtin.stat:
+    path: '{{ letsencrypt_account_key_src }}'
+  register: stat_acme_account_key_result
+
+- name: Create ACME Private Key
+  community.crypto.openssl_privatekey:
+    path: '{{ letsencrypt_privkey_path }}/{{ inventory_hostname }}.{{ domain }}.key'
 
 - name: Create ACME CSR
   community.crypto.openssl_csr:

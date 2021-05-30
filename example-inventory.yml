@@ -4,6 +4,7 @@ all:
     production: no
     letsencrypt_account_key_src: ./account.key
     letsencrypt_account_email: admin@nakatomi.corp
+    letsencrypt_privkey_path: ./keys/
     letsencrypt_cert_path: ./certs/
     letsencrypt_csr_path: ./csr/
     domain: nakatomi.corp
@@ -13,5 +14,7 @@ all:
     dns_server: 10.42.42.53
   hosts:
     example-firewall-01:
+      fw_username: admin
+      fw_password: password
     example-firewall-02:
     example-firewall-03:
