@@ -3,13 +3,13 @@
   community.crypto.acme_certificate:
     account_key_src: '{{ letsencrypt_account_key_src }}'
     account_email: '{{ letsencrypt_account_email }}'
-    csr:
-    cert: 
+    csr: '{{ letsencrypt_csr_path}}/{{ inventory_hostname }}.{{ domain }}.csr'
+    cert: '{{ letsencrypt_cert_path}}/{{ inventory_hostname }}.{{ domain }}.crt'
     challenge: dns-01
     remaining_days: 60
     terms_agreed: yes
     acme_version: 2
-    acme_directory: https://acme-v02.api.letsencrypt.org/directory # production
+    acme_directory: https://acme-v02.api.letsencrypt.org/directory
   register: challenge
   when: production == True
 
@@ -19,7 +19,7 @@
     key_secret: '{{ dns_key_secret }}'
     server: '{{ dns_server }}'
     type: TXT
-    key_algorithm: hmac-sha256
+    key_algorithm: '{{ dns_key_algorithm }}'
     record: _acme-challenge.'{{ inventory_hostname }}'.'{{ domain }}'
     value: challenge.challenge_data['{{ inventory_hostname }}.{{ domain }}']['dns-01'].resource_value
 
