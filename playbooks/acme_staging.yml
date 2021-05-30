@@ -1,0 +1,36 @@
+---
+- name: Create ACME Challenge (Staging)
+  community.crypto.acme_certificate:
+    account_key_src: '{{ letsencrypt_account_key_src }}'
+    account_email: '{{ letsencrypt_account_email }}'
+    fullchain_dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-fullchain.pem'
+    challenge: dns-01
+    remaining_days: 60
+    terms_agreed: yes
+    acme_version: 2
+    acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory # staging
+  register: challenge
+  when: production == False
+
+- name: Add ACME DNS record
+  community.general.nsupdate:
+    key_name: '{{ dns_key_name }}'
+    key_secret: '{{ dns_key_secret }}'
+    server: '{{ dns_server }}'
+    type: TXT
+    key_algorithm: hmac-sha256
+    record: _acme-challenge.'{{ inventory_hostname }}'.'{{ domain }}'
+    value: challenge.challenge_data['{{ inventory_hostname }}.{{ domain }}']['dns-01'].resource_value
+
+- name: Validate Challenge and retrieve certificate (Staging)
+  community.crypto.acme_certificate:
+    account_key_src: '{{ letsencrypt_account_key_src }}'
+    account_email: '{{ letsencrypt_account_email }}'
+    fullchain_dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-fullchain.pem'
+    challenge: dns-01
+    remaining_days: 60
+    terms_agreed: yes
+    acme_version: 2
+    acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
+  register: challenge
+  when: production == True
