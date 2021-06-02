@@ -2,3 +2,4 @@ inventory.yml
 certs/*
 csr/*
 keys/*
+account.key

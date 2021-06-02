@@ -1,27 +1,29 @@
 ---
-hosts: all
-connection: local
-gather_facts: no
-
-collections:
-  - community.crypto.privatekey
-  - community.crypto.openssl_csr
-  - community.crypto.acme_certificate
-  - paloaltonetworks.panos
-
-vars:
-  firewall:
-    ip_address: '{{ ansible_host }}'
-    username: '{{ fw_username }}'
-    password: '{{ fw_password }}'
-    port: '{{ fw_port | default("443") }}'
-    api_key: '{{ fw_api_key | default(omit) }}'
-    serial_number: '{{ fw_serial_number | default(omit) }}'
-
-tasks:
-  - import_tasks: ./playbooks/openssl.yml
-  - import_tasks: ./playbooks/acme_staging.yml
-    when: production == False
-  - import_tasks: ./playbooks/acme_production.yml
-    when: production == True
-  - import_tasks: ./playbooks/panos_cert.yml
+- name: Create and import Let's Encrypt Certificate into PAN firewall
+  hosts: all
+  connection: local
+  gather_facts: yes
+  
+  collections:
+    - community.crypto.privatekey
+    - community.crypto.openssl_csr
+    - community.crypto.acme_certificate
+    - paloaltonetworks.panos
+  
+  vars:
+    firewall:
+      ip_address: '{{ ansible_host }}'
+      username: '{{ fw_username }}'
+      password: '{{ fw_password }}'
+      port: '{{ fw_port | default("443") }}'
+      api_key: '{{ fw_api_key | default(omit) }}'
+      serial_number: '{{ fw_serial_number | default(omit) }}'
+    fqdn: '{{ inventory_hostname}}.{{ domain }}'
+  
+  tasks:
+    - import_tasks: ./playbooks/openssl.yml
+    - import_tasks: ./playbooks/acme_staging.yml
+      when: production == False
+    - import_tasks: ./playbooks/acme_production.yml
+      when: production == True
+    - import_tasks: ./playbooks/panos_cert.yml
