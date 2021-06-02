@@ -13,21 +13,35 @@
   register: challenge
   when: production == False
 
-- name: Add ACME DNS record
+- name: Add ACME DNS record (BIND)
   community.general.nsupdate:
-    key_name: '{{ dns_key_name }}'
-    key_secret: '{{ dns_key_secret }}'
+    key_name: '{{ bind_key_name }}'
+    key_secret: '{{ bind_key_secret }}'
     server: '{{ dns_server }}'
     type: TXT
-    key_algorithm: '{{ dns_key_algorithm }}'
+    key_algorithm: '{{ bind_key_algorithm }}'
     record: _acme-challenge.'{{ inventory_hostname }}'.'{{ domain }}'
     value: challenge.challenge_data['{{ inventory_hostname }}.{{ domain }}']['dns-01'].resource_value
+  when: bind_key_name is defined and bind_key_secret is defined and bind_key_name|length > 0 and bind_key_secret|length > 0
+
+- name: Add ACME DNS record (GoDaddy)
+  uri:
+    url: 'https://api.godaddy.com/v1/domains/{{ domain }}/records'
+    method: PATCH
+    body: '[ { "data": "challenge.challenge_data["{{ inventory_hostname }}.{{ domain }}"]["dns-01"].resource_value", "name": "_acme-challenge.{{ inventory_hostname }}.{{ domain }}", "ttl": 1800, "type": "TXT" } ]'
+    body_format: json
+    headers:
+      Authorization: 'sso-key {{ godaddy_key_name }}:{{ godaddy_key_secret }}'
+      Accept: 'application/json'
+  when: godaddy_key_name is defined and godaddy_key_secret is defined and godaddy_key_name|length > 0 and godaddy_key_secret|length > 0
 
 - name: Validate Challenge and retrieve certificate (Staging)
   community.crypto.acme_certificate:
     account_key_src: '{{ letsencrypt_account_key_src }}'
     account_email: '{{ letsencrypt_account_email }}'
     fullchain_dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-fullchain.pem'
+    dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}.pem'
+    chain_dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-chain.pem'
     challenge: dns-01
     remaining_days: 60
     terms_agreed: yes
@@ -35,3 +49,13 @@
     acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
   register: challenge
   when: production == True
+
+- name: Generate PKCS#12 file
+  community.crypto.openssl_pkcs12:
+    action: export
+    path: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-fullchain.p12'
+    friendly_name: '{{ inventory_hostname }}'
+    privatekey_path: '{{ letsencrypt_privkey_path }}/{{ inventory_hostname }}.{{ domain }}.key'
+    certificate_path: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}.pem'
+    other_certificates: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-chain.pem'
+    other_certificates_parse_all: yes

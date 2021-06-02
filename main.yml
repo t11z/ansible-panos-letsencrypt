@@ -24,3 +24,4 @@ tasks:
     when: production == False
   - import_tasks: ./playbooks/acme_production.yml
     when: production == True
+  - import_tasks: ./playbooks/panos_cert.yml
