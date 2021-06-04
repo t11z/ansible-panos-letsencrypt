@@ -10,8 +10,7 @@
     terms_agreed: yes
     acme_version: 2
     acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
-  register: challenge
-  when: production == False
+  register: acme_challenge
 
 - name: Add ACME DNS record (BIND)
   community.general.nsupdate:
@@ -19,25 +18,40 @@
     key_secret: '{{ bind_key_secret }}'
     server: '{{ dns_server }}'
     type: TXT
+    ttl: 600
     zone: '{{ domain }}'
     key_algorithm: '{{ bind_key_algorithm }}'
     record: _acme-challenge.'{{ inventory_hostname }}'.'{{ domain }}'
-    value: '{{ challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}'
-  when: bind_key_name is defined and bind_key_secret is defined and bind_key_name|length > 0 and bind_key_secret|length > 0
+    value: '{{ acme_challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}'
+  when: bind_key_name is defined and bind_key_secret is defined and bind_key_name|length > 0 and bind_key_secret|length > 0  and acme_challenge.authorizations[fqdn].status != 'valid'
 
-- debug:
-    msg: '{{ challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}'
+- name: Delete existing ACME DNS record (GoDaddy)
+  uri:
+    url: 'https://api.godaddy.com/v1/domains/{{ domain }}/records/TXT/_acme-challenge.{{ inventory_hostname }}'
+    method: DELETE
+    headers:
+      Authorization: 'sso-key {{ godaddy_key_name }}:{{ godaddy_key_secret }}'
+      Accept: 'application/json'
+    status_code: 
+      - 204
+      - 404
+  when: godaddy_key_name is defined and godaddy_key_secret is defined and godaddy_key_name|length > 0 and godaddy_key_secret|length > 0 
 
-- name: Add ACME DNS record (GoDaddy)
+- name: Add new ACME DNS record (GoDaddy)
   uri:
     url: 'https://api.godaddy.com/v1/domains/{{ domain }}/records'
     method: PATCH
-    body: '[ { "data": "{{ challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}", "name": "_acme-challenge.{{ inventory_hostname }}.{{ domain }}", "ttl": 1800, "type": "TXT" } ]'
+    body: '[ { "data": "{{ acme_challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}", "name": "_acme-challenge.{{ inventory_hostname }}", "ttl": 600, "type": "TXT" } ]'
     body_format: json
     headers:
       Authorization: 'sso-key {{ godaddy_key_name }}:{{ godaddy_key_secret }}'
       Accept: 'application/json'
-  when: godaddy_key_name is defined and godaddy_key_secret is defined and godaddy_key_name|length > 0 and godaddy_key_secret|length > 0
+  when: godaddy_key_name is defined and godaddy_key_secret is defined and godaddy_key_name|length > 0 and godaddy_key_secret|length > 0 and acme_challenge.authorizations[fqdn].status != 'valid'
+
+- name: Wait until DNS TTL expires
+  pause:
+    seconds: 600
+  when: acme_challenge.authorizations[fqdn].status != 'valid'
 
 - name: Validate Challenge and retrieve certificate (Staging)
   community.crypto.acme_certificate:
@@ -52,7 +66,7 @@
     terms_agreed: yes
     acme_version: 2
     acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
-  register: challenge
+    data: '{{ acme_challenge }}'
 
 - name: Generate PKCS#12 file
   community.crypto.openssl_pkcs12:
@@ -63,3 +77,4 @@
     certificate_path: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}.pem'
     other_certificates: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-chain.pem'
     other_certificates_parse_all: yes
+    passphrase: '{{ pkcs12_passphrase }}'

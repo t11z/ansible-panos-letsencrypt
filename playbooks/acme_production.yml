@@ -1,5 +1,5 @@
 ---
-- name: Create ACME Challenge (Production)
+- name: Create ACME Challenge (Staging)
   community.crypto.acme_certificate:
     account_key_src: '{{ letsencrypt_account_key_src }}'
     account_email: '{{ letsencrypt_account_email }}'
@@ -10,28 +10,71 @@
     terms_agreed: yes
     acme_version: 2
     acme_directory: https://acme-v02.api.letsencrypt.org/directory
-  register: challenge
-  when: production == True
+  register: acme_challenge
 
-- name: Add ACME DNS record
+- name: Add ACME DNS record (BIND)
   community.general.nsupdate:
     key_name: '{{ bind_key_name }}'
     key_secret: '{{ bind_key_secret }}'
     server: '{{ dns_server }}'
     type: TXT
+    ttl: 600
+    zone: '{{ domain }}'
     key_algorithm: '{{ bind_key_algorithm }}'
     record: _acme-challenge.'{{ inventory_hostname }}'.'{{ domain }}'
-    value: challenge.challenge_data['{{ inventory_hostname }}.{{ domain }}']['dns-01'].resource_value
+    value: '{{ acme_challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}'
+  when: bind_key_name is defined and bind_key_secret is defined and bind_key_name|length > 0 and bind_key_secret|length > 0  and acme_challenge.authorizations[fqdn].status != 'valid'
 
-- name: Validate Challenge and retrieve certificate (Production)
+- name: Delete existing ACME DNS record (GoDaddy)
+  uri:
+    url: 'https://api.godaddy.com/v1/domains/{{ domain }}/records/TXT/_acme-challenge.{{ inventory_hostname }}'
+    method: DELETE
+    headers:
+      Authorization: 'sso-key {{ godaddy_key_name }}:{{ godaddy_key_secret }}'
+      Accept: 'application/json'
+    status_code: 
+      - 204
+      - 404
+  when: godaddy_key_name is defined and godaddy_key_secret is defined and godaddy_key_name|length > 0 and godaddy_key_secret|length > 0 
+
+- name: Add new ACME DNS record (GoDaddy)
+  uri:
+    url: 'https://api.godaddy.com/v1/domains/{{ domain }}/records'
+    method: PATCH
+    body: '[ { "data": "{{ acme_challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}", "name": "_acme-challenge.{{ inventory_hostname }}", "ttl": 600, "type": "TXT" } ]'
+    body_format: json
+    headers:
+      Authorization: 'sso-key {{ godaddy_key_name }}:{{ godaddy_key_secret }}'
+      Accept: 'application/json'
+  when: godaddy_key_name is defined and godaddy_key_secret is defined and godaddy_key_name|length > 0 and godaddy_key_secret|length > 0 and acme_challenge.authorizations[fqdn].status != 'valid'
+
+- name: Wait until DNS TTL expires
+  pause:
+    seconds: 600
+  when: acme_challenge.authorizations[fqdn].status != 'valid'
+
+- name: Validate Challenge and retrieve certificate (Staging)
   community.crypto.acme_certificate:
     account_key_src: '{{ letsencrypt_account_key_src }}'
     account_email: '{{ letsencrypt_account_email }}'
+    csr: '{{ letsencrypt_csr_path}}/{{ inventory_hostname }}.{{ domain }}.csr'
     fullchain_dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-fullchain.pem'
+    dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}.pem'
+    chain_dest: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-chain.pem'
     challenge: dns-01
     remaining_days: 60
     terms_agreed: yes
     acme_version: 2
     acme_directory: https://acme-v02.api.letsencrypt.org/directory
-  register: challenge
-  when: production == True
+    data: '{{ acme_challenge }}'
+
+- name: Generate PKCS#12 file
+  community.crypto.openssl_pkcs12:
+    action: export
+    path: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-fullchain.p12'
+    friendly_name: '{{ inventory_hostname }}'
+    privatekey_path: '{{ letsencrypt_privkey_path }}/{{ inventory_hostname }}.{{ domain }}.key'
+    certificate_path: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}.pem'
+    other_certificates: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-chain.pem'
+    other_certificates_parse_all: yes
+    passphrase: '{{ pkcs12_passphrase }}'

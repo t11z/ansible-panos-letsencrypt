@@ -27,5 +27,5 @@
 - name: Create ACME CSR
   community.crypto.openssl_csr:
     path: '{{ letsencrypt_csr_path }}/{{ inventory_hostname }}.{{ domain }}.csr'
-    privatekey_path: '{{ letsencrypt_account_key_src }}'
+    privatekey_path: '{{ letsencrypt_privkey_path }}/{{ inventory_hostname }}.{{ domain }}.key'
     common_name: '{{ inventory_hostname }}.{{ domain }}'
