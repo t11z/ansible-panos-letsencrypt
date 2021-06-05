@@ -4,9 +4,9 @@ all:
     production: no
     letsencrypt_account_key_src: ./account.key
     letsencrypt_account_email: admin@nakatomi.corp
-    letsencrypt_privkey_path: ./keys/
-    letsencrypt_cert_path: ./certs/
-    letsencrypt_csr_path: ./csr/
+    letsencrypt_privkey_path: ./keys
+    letsencrypt_cert_path: ./certs
+    letsencrypt_csr_path: ./csr
     domain: nakatomi.corp
     bind_key_name: ansible
     bind_key_secret: 'xwq9FVc3jarH2qA90ui3q2FP84xwVkVL25vmslji+u1mESR7rN6h6Vnz08MQwz4F+/9oP1CNxefzvgy8910vNQ=='

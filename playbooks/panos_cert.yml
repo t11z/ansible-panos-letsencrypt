@@ -1,9 +1,9 @@
 ---
 - name: Add Certificate and private key to firewall
-  panos_import:
+  paloaltonetworks.panos_import:
     provider: '{{ firewall }}'
     file: '{{ letsencrypt_cert_path }}/{{ inventory_hostname }}.{{ domain }}-fullchain.p12'
-    category: certificate
+    category: keypair
     certificate_name: '{{ inventory_hostname }}.{{ domain }}'
     format: 'pkcs12'
     passphrase: '{{ pkcs12_passphrase }}'
