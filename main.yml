@@ -12,7 +12,7 @@
   
   vars:
     firewall:
-      ip_address: '{{ ansible_host }}'
+      ip_address: '{{ fw_ip }}'
       username: '{{ fw_username }}'
       password: '{{ fw_password }}'
       port: '{{ fw_port | default("443") }}'

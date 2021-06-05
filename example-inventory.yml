@@ -7,14 +7,18 @@ all:
     letsencrypt_privkey_path: ./keys
     letsencrypt_cert_path: ./certs
     letsencrypt_csr_path: ./csr
+    pkcs12_passphrase: 
     domain: nakatomi.corp
-    bind_key_name: ansible
-    bind_key_secret: 'xwq9FVc3jarH2qA90ui3q2FP84xwVkVL25vmslji+u1mESR7rN6h6Vnz08MQwz4F+/9oP1CNxefzvgy8910vNQ=='
-    bind_key_algorithm: hmac-sha512
-    dns_server: 10.42.42.53
+    bind_key_name: 
+    bind_key_secret: 
+    bind_key_algorithm: 
+    godaddy_key_name: 
+    godaddy_key_secret: 
+    dns_server: 10.0.135.10
+    ansible_connection: local
+    ansible_python_interpreter: '{{ansible_playbook_python}}'
   hosts:
-    example-firewall-01:
+    fw-mgmt:
+      fw_ip: 10.0.135.9
       fw_username: admin
-      fw_password: password
-    example-firewall-02:
-    example-firewall-03:
+      fw_password: paloalto
