@@ -21,7 +21,7 @@
     ttl: 600
     zone: '{{ domain }}'
     key_algorithm: '{{ bind_key_algorithm }}'
-    record: _acme-challenge.'{{ inventory_hostname }}'.'{{ domain }}'
+    record: '_acme-challenge.{{ inventory_hostname }}'
     value: '{{ acme_challenge.challenge_data[fqdn]["dns-01"]["resource_value"] }}'
   when: bind_key_name is defined and bind_key_secret is defined and bind_key_name|length > 0 and bind_key_secret|length > 0  and acme_challenge.authorizations[fqdn].status != 'valid'
 
